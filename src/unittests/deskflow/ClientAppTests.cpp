@@ -4,9 +4,7 @@
  * SPDX-License-Identifier: GPL-2.0-only WITH LicenseRef-OpenSSL-Exception
  */
 
-#define private public
 #include "deskflow/ClientApp.h"
-#undef private
 
 #include "base/EventQueue.h"
 
