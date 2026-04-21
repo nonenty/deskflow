@@ -12,8 +12,7 @@
 
 #include <QTest>
 
-namespace
-{
+namespace {
 class CountingEventQueue : public EventQueue
 {
 public:
