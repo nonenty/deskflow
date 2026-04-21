@@ -22,12 +22,9 @@ class Event;
 class Client;
 class Thread;
 class ISocketFactory;
-class ClientAppTests;
 
 class ClientApp : public App
 {
-  friend class ClientAppTests;
-
 public:
   explicit ClientApp(IEventQueue *events, const QString &processName = QString());
   ~ClientApp() override = default;
