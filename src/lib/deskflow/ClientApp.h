@@ -88,6 +88,8 @@ private:
   ISocketFactory *getSocketFactory() const;
   NetworkAddress &getCurrentServerAddress();
   void tryNextServer();
+  void handleSuspend();
+  void handleResume();
 
   bool m_suspended = false;
   Client *m_client = nullptr;

@@ -137,12 +137,18 @@ deskflow::Screen *ClientApp::openClientScreen()
   getEvents()->addHandler(EventTypes::ScreenError, screen->getEventTarget(), [this](const auto &) {
     handleScreenError();
   });
+  getEvents()->addHandler(EventTypes::ScreenSuspend, screen->getEventTarget(), [this](const auto &) {
+    handleSuspend();
+  });
+  getEvents()->addHandler(EventTypes::ScreenResume, screen->getEventTarget(), [this](const auto &) { handleResume(); });
   return screen;
 }
 
 void ClientApp::closeClientScreen(deskflow::Screen *screen)
 {
   if (screen != nullptr) {
+    getEvents()->removeHandler(EventTypes::ScreenSuspend, screen->getEventTarget());
+    getEvents()->removeHandler(EventTypes::ScreenResume, screen->getEventTarget());
     getEvents()->removeHandler(EventTypes::ScreenError, screen->getEventTarget());
     delete screen;
   }
@@ -230,6 +236,16 @@ void ClientApp::handleClientDisconnected()
   }
 }
 
+void ClientApp::handleSuspend()
+{
+  m_suspended = true;
+}
+
+void ClientApp::handleResume()
+{
+  m_suspended = false;
+}
+
 Client *ClientApp::openClient(const std::string &name, const NetworkAddress &address, deskflow::Screen *screen)
 {
   auto *client = new Client(getEvents(), name, address, getSocketFactory(), screen);
@@ -262,10 +278,10 @@ void ClientApp::closeClient(Client *client)
     return;
   }
   using enum EventTypes;
-  getEvents()->removeHandler(ClientConnected, client);
-  getEvents()->removeHandler(ClientConnectionFailed, client);
-  getEvents()->removeHandler(ClientConnectionRefused, client);
-  getEvents()->removeHandler(ClientDisconnected, client);
+  getEvents()->removeHandler(ClientConnected, client->getEventTarget());
+  getEvents()->removeHandler(ClientConnectionFailed, client->getEventTarget());
+  getEvents()->removeHandler(ClientConnectionRefused, client->getEventTarget());
+  getEvents()->removeHandler(ClientDisconnected, client->getEventTarget());
   delete client;
 }
 

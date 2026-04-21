@@ -6,6 +6,14 @@ if(WIN32)
 endif()
 
 create_test(
+  NAME ClientAppTests
+  DEPENDS app
+  LIBS arch base io net ${extra_libs}
+  SOURCE ClientAppTests.cpp
+  WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
+)
+
+create_test(
   NAME ClipboardTests
   DEPENDS app
   LIBS arch base io ${extra_libs}
@@ -62,4 +70,3 @@ if(BUILD_X11_SUPPORT)
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/src/lib/deskflow"
   )
 endif()
-
