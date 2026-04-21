@@ -159,6 +159,12 @@ void ClientApp::handleClientRestart(const Event &, EventQueueTimer *timer)
   // discard old timer
   getEvents()->deleteTimer(timer);
   getEvents()->removeHandler(EventTypes::Timer, timer);
+  m_retryTimer = nullptr;
+
+  if (m_suspended) {
+    m_retryOnResume = true;
+    return;
+  }
 
   // reconnect
   startClient();
@@ -166,10 +172,12 @@ void ClientApp::handleClientRestart(const Event &, EventQueueTimer *timer)
 
 void ClientApp::scheduleClientRestart(double retryTime)
 {
+  stopRetryTimer();
   LOG_DEBUG("retry in %.0f seconds", retryTime);
   ipcSendToClient("retryIn", QString::number(retryTime, 'f', 0));
   // install a timer and handler to retry later
   EventQueueTimer *timer = getEvents()->newOneShotTimer(retryTime, nullptr);
+  m_retryTimer = timer;
   getEvents()->addHandler(EventTypes::Timer, timer, [this, timer](const auto &e) { handleClientRestart(e, timer); });
 }
 
@@ -239,11 +247,17 @@ void ClientApp::handleClientDisconnected()
 void ClientApp::handleSuspend()
 {
   m_suspended = true;
+  m_retryOnResume = stopRetryTimer();
 }
 
 void ClientApp::handleResume()
 {
   m_suspended = false;
+  const bool retryOnResume = m_retryOnResume;
+  m_retryOnResume = false;
+  if (retryOnResume && (m_client == nullptr || (!m_client->isConnected() && !m_client->isConnecting()))) {
+    scheduleClientRestart(retryTime());
+  }
 }
 
 Client *ClientApp::openClient(const std::string &name, const NetworkAddress &address, deskflow::Screen *screen)
@@ -324,6 +338,7 @@ bool ClientApp::startClient()
 
 void ClientApp::stopClient()
 {
+  stopRetryTimer();
   closeClient(m_client);
   closeClientScreen(m_clientScreen);
   m_client = nullptr;
@@ -419,4 +434,16 @@ double ClientApp::retryTime() const
   if (m_retryCount < 430) // 20 minutes
     return 120;
   return 300;
+}
+
+bool ClientApp::stopRetryTimer()
+{
+  if (m_retryTimer == nullptr) {
+    return false;
+  }
+
+  getEvents()->removeHandler(EventTypes::Timer, m_retryTimer);
+  getEvents()->deleteTimer(m_retryTimer);
+  m_retryTimer = nullptr;
+  return true;
 }

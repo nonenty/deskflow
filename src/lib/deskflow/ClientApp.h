@@ -88,12 +88,15 @@ private:
   ISocketFactory *getSocketFactory() const;
   NetworkAddress &getCurrentServerAddress();
   void tryNextServer();
+  bool stopRetryTimer();
   void handleSuspend();
   void handleResume();
 
   bool m_suspended = false;
+  bool m_retryOnResume = false;
   Client *m_client = nullptr;
   deskflow::Screen *m_clientScreen = nullptr;
+  EventQueueTimer *m_retryTimer = nullptr;
   QList<NetworkAddress> m_serverAddresses;
   size_t m_currentServerIndex = 0;
   size_t m_lastServerAddressIndex = 0;

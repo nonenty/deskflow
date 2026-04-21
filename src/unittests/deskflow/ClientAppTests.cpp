@@ -25,7 +25,14 @@ public:
   }
 
   int oneShotTimerCount = 0;
+  int deleteTimerCount = 0;
   double lastDuration = 0.0;
+
+  void deleteTimer(EventQueueTimer *timer) override
+  {
+    ++deleteTimerCount;
+    EventQueue::deleteTimer(timer);
+  }
 };
 } // namespace
 
@@ -37,6 +44,9 @@ private Q_SLOTS:
   void handleClientDisconnected_schedulesRetry_whenAwake();
   void handleClientDisconnected_skipsRetry_whenSuspended();
   void handleSuspend_and_handleResume_toggleSuspendedState();
+  void handleSuspend_cancelsPendingRetry();
+  void handleResume_reschedulesDeferredRetry();
+  void scheduleClientRestart_replacesPendingRetryTimer();
 };
 
 void ClientAppTests::handleClientDisconnected_schedulesRetry_whenAwake()
@@ -74,6 +84,57 @@ void ClientAppTests::handleSuspend_and_handleResume_toggleSuspendedState()
 
   app.handleResume();
   QVERIFY(!app.m_suspended);
+}
+
+void ClientAppTests::handleSuspend_cancelsPendingRetry()
+{
+  CountingEventQueue events;
+  ClientApp app(&events);
+
+  app.scheduleClientRestart(5.0);
+  QVERIFY(app.m_retryTimer != nullptr);
+
+  app.handleSuspend();
+
+  QVERIFY(app.m_suspended);
+  QVERIFY(app.m_retryTimer == nullptr);
+  QVERIFY(app.m_retryOnResume);
+  QCOMPARE(events.deleteTimerCount, 1);
+}
+
+void ClientAppTests::handleResume_reschedulesDeferredRetry()
+{
+  CountingEventQueue events;
+  ClientApp app(&events);
+
+  app.m_suspended = true;
+  app.m_retryOnResume = true;
+
+  app.handleResume();
+
+  QVERIFY(!app.m_suspended);
+  QVERIFY(!app.m_retryOnResume);
+  QVERIFY(app.m_retryTimer != nullptr);
+  QCOMPARE(events.oneShotTimerCount, 1);
+  QCOMPARE(events.lastDuration, 1.0);
+}
+
+void ClientAppTests::scheduleClientRestart_replacesPendingRetryTimer()
+{
+  CountingEventQueue events;
+  ClientApp app(&events);
+
+  app.scheduleClientRestart(5.0);
+  const auto *firstTimer = app.m_retryTimer;
+  QVERIFY(firstTimer != nullptr);
+
+  app.scheduleClientRestart(3.0);
+
+  QVERIFY(app.m_retryTimer != nullptr);
+  QVERIFY(app.m_retryTimer != firstTimer);
+  QCOMPARE(events.oneShotTimerCount, 2);
+  QCOMPARE(events.deleteTimerCount, 1);
+  QCOMPARE(events.lastDuration, 3.0);
 }
 
 QTEST_MAIN(ClientAppTests)
