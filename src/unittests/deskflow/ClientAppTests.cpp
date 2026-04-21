@@ -137,3 +137,5 @@ void ClientAppTests::scheduleClientRestart_replacesPendingRetryTimer()
 }
 
 QTEST_MAIN(ClientAppTests)
+
+#include "ClientAppTests.moc"
